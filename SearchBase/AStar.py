@@ -26,7 +26,7 @@ class AStar:
     def setEndByColor(self, r, g, b):
         self.endPoint = self.getPointByColor(r, g, b)
     
-    def compute(self, showFinalPlot=False, path=None):
+    def compute(self, showFinalPlot=False, filePath=None):
         iteration = 0
         currentPoint:Point.Point = None
         self.openPoints.append(self.startPoint)
@@ -45,8 +45,8 @@ class AStar:
                         if not self.isPointInList(neighbourPoint, self.openPoints):
                             self.openPoints.append(neighbourPoint)
 
-            if path is not None:
-                self.createPlot(path, iteration)
+            if filePath is not None:
+                self.createPlot(filePath, iteration)
             
             if currentPoint.h_cost == 0:
                 break
@@ -56,7 +56,6 @@ class AStar:
             raise Exception('EndPointNotReachable')
         if iteration == self.MAX_ITERATION:
             raise Exception('MaxIterationReached')
-        
         if showFinalPlot:
             self.createPlot()
 

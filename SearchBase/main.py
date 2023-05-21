@@ -16,7 +16,7 @@ points = sorted(points, key=attrgetter('f_cost', 'g_cost'))
 
 
 
-astar = AStar.AStar('pic7.png')
+astar = AStar.AStar('pic5.png')
 astar.setStartByColor(0, 255, 0)
 astar.setEndByColor(255, 0, 0)
 
