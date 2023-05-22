@@ -7,7 +7,7 @@ from PIL import Image
 
 
 class AStar:
-    def __init__(self, mapImagePath:str, maxIteration=10000) -> None:
+    def __init__(self, mapImagePath:str, maxIteration=1000000) -> None:
         self.mapImage = np.asarray(Image.open(mapImagePath))
         self.startPoint:Point.Point = None
         self.endPoint:Point.Point = None
@@ -32,18 +32,18 @@ class AStar:
         self.openPoints.append(self.startPoint)
         
         while iteration < self.MAX_ITERATION and len(self.openPoints) > 0:
-            currentPoint = sorted(self.openPoints, key=attrgetter('f_cost', 'g_cost'))[0]
-            self.openPoints = self.delteFromList(currentPoint, self.openPoints)
+            self.openPoints = sorted(self.openPoints, key=attrgetter('f_cost', 'g_cost'), reverse=True)
+            currentPoint = self.openPoints.pop()
             self.closedPoints.append(currentPoint)
 
             neighbourPoints = self.getNeighbourPoints(currentPoint)
 
             for neighbourPoint in neighbourPoints:
                 if not self.isPointInList(neighbourPoint, self.closedPoints):
+                    
+                    self.setCost(neighbourPoint, currentPoint)
                     if not self.isPointInList(neighbourPoint, self.openPoints):
-                        self.setCost(neighbourPoint, currentPoint)
-                        if not self.isPointInList(neighbourPoint, self.openPoints):
-                            self.openPoints.append(neighbourPoint)
+                        self.openPoints.append(neighbourPoint)
 
             if filePath is not None:
                 self.createPlot(filePath, iteration)
@@ -61,10 +61,11 @@ class AStar:
 
         return iteration
 
+    def getPath(self):
+        pass
+
+
         
-
-
-
     def getPointByColor(self, r, g, b):
         x, y = -1, -1
         for idi, i in enumerate(self.mapImage):
@@ -97,7 +98,11 @@ class AStar:
                     y = point.y+j
                     neigbourPoint = Point.Point(x,y)
                     if self.isValidPoint(neigbourPoint):
-                        neighbourPoints.append(neigbourPoint)
+                        if self.isPointInList(neigbourPoint, self.openPoints):
+                            pointFromList = self.getPointFromList(neigbourPoint, self.openPoints)
+                            neighbourPoints.append(pointFromList)
+                        else:
+                            neighbourPoints.append(neigbourPoint)
         return neighbourPoints
 
     def isWall(self, point:Point.Point):
@@ -146,12 +151,24 @@ class AStar:
         else:
             return distance
     
+    def getPointFromList(self, point:Point.Point, list:list[Point.Point]):
+        selectedPoint:Point.Point = None
+        for p in list:
+            if p == point:
+                selectedPoint = p
+                break
+        return selectedPoint
+
     def createPlot(self, path=None, iterations=0):
+        plt.rcParams['figure.figsize'] = [12, 8]
         printLabels = False
         maxDimension = max(self.mapImage.shape)
 
         if maxDimension < 16: printLabels = True
-        rectangleDimension = 100000/maxDimension**2
+        rectangleDimension = 250000/maxDimension**2
+        precision = 2
+        fontSmall = 6
+        fontBig = 10
 
         yellow_x = []
         yellow_y = []
@@ -160,19 +177,19 @@ class AStar:
 
         for point in self.openPoints:
             if printLabels:
-                label = f'{round(point.g_cost,1)}   {round(point.h_cost,1)}'
-                plt.text(point.x, point.y, label, ha='center',va='bottom',fontsize=8)
-                label = f'{round(point.f_cost,1)}'
-                plt.text(point.x, point.y, label, ha='center',va='top',fontsize=12)
+                label = f'{round(point.g_cost,precision)}   {round(point.h_cost,precision)}'
+                plt.text(point.x, point.y, label, ha='center',va='bottom',fontsize=fontSmall)
+                label = f'{round(point.f_cost,precision)}'
+                plt.text(point.x, point.y, label, ha='center',va='top',fontsize=fontBig)
             yellow_x.append(point.x)
             yellow_y.append(point.y)
 
         for point in self.closedPoints:
             if printLabels:
-                label = f'{round(point.g_cost,1)}   {round(point.h_cost,1)}'
-                plt.text(point.x, point.y, label, ha='center',va='bottom',fontsize=8)
-                label = f'{round(point.f_cost,1)}'
-                plt.text(point.x, point.y, label, ha='center',va='top',fontsize=12)
+                label = f'{round(point.g_cost,precision)}   {round(point.h_cost,precision)}'
+                plt.text(point.x, point.y, label, ha='center',va='bottom',fontsize=fontSmall)
+                label = f'{round(point.f_cost,precision)}'
+                plt.text(point.x, point.y, label, ha='center',va='top',fontsize=fontBig)
             orange_x.append(point.x)
             orange_y.append(point.y)
         
@@ -190,5 +207,3 @@ class AStar:
     def createFolder(self, path):
         if not os.path.exists(path):
             os.makedirs(path)
-
-
