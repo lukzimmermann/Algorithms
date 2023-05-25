@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import Point
+import time
 import os
 from operator import attrgetter
 from PIL import Image
@@ -13,7 +14,12 @@ class AStar:
         self.endPoint:Point.Point = None
         self.openPoints:list[Point.Point] = []
         self.closedPoints:list[Point.Point] = []
+        self.path:list[Point.Point] = []
+        self.rectangleDimension = 0
         self.MAX_ITERATION = maxIteration
+        self.maxDimension = max(self.mapImage.shape)
+        self.rectangleDimension = 250000/self.maxDimension**2
+        self.startTime = time.time()
         
     
     def getImageArray(self):
@@ -25,12 +31,15 @@ class AStar:
 
     def setEndByColor(self, r, g, b):
         self.endPoint = self.getPointByColor(r, g, b)
+
+    def setEndByCoordinate(self, x, y):
+        self.endPoint = Point.Point(x, y, float('inf'), float('inf'))
     
-    def compute(self, showFinalPlot=False, filePath=None):
+    def compute(self, showFinalPlot=False, filePath:str=None):
         iteration = 0
         currentPoint:Point.Point = None
         self.openPoints.append(self.startPoint)
-        
+
         while iteration < self.MAX_ITERATION and len(self.openPoints) > 0:
             self.openPoints = sorted(self.openPoints, key=attrgetter('f_cost', 'g_cost'), reverse=True)
             currentPoint = self.openPoints.pop()
@@ -42,27 +51,51 @@ class AStar:
                 if not self.isPointInList(neighbourPoint, self.closedPoints):
                     
                     self.setCost(neighbourPoint, currentPoint)
+
                     if not self.isPointInList(neighbourPoint, self.openPoints):
                         self.openPoints.append(neighbourPoint)
-
+                        
             if filePath is not None:
-                self.createPlot(filePath, iteration)
-            
+                self.drawLists(filePath, iteration)
             if currentPoint.h_cost == 0:
                 break
+            
+            if iteration%100 == 0:
+                allpoints = self.mapImage.shape[0] * self.mapImage.shape[1]
+                print(f'Time: {round(time.time()-self.startTime, 1)}\t\tIteration: {iteration}\t\t{100/allpoints*iteration}%')
+
             iteration += 1
         
         if self.isTarget(currentPoint) is not True:
             raise Exception('EndPointNotReachable')
         if iteration == self.MAX_ITERATION:
             raise Exception('MaxIterationReached')
+
         if showFinalPlot:
-            self.createPlot()
+            self.drawLists()
+            plt.show()
 
         return iteration
 
-    def getPath(self):
-        pass
+    def getPath(self, drawPath=False):
+        bestPoint:Point.Point = self.endPoint
+
+        while bestPoint.g_cost > 1:
+            neighbourPoint = self.getNeighbourPoints(bestPoint)
+            min_g_Cost = float('inf')
+            for p in neighbourPoint:
+                if self.isPointInList(p, self.closedPoints):
+                    p = self.getPointFromList(p, self.closedPoints)
+                    if p.g_cost < min_g_Cost:
+                        min_g_Cost = p.g_cost
+                        bestPoint = p
+            self.path.append(bestPoint)
+        
+        if drawPath:
+            self.drawPath()
+
+        return self.path
+
 
 
         
@@ -158,14 +191,15 @@ class AStar:
                 selectedPoint = p
                 break
         return selectedPoint
+    
+    def getLowestGCostFromList(pointList:list[Point.Point]):
+        pass
 
-    def createPlot(self, path=None, iterations=0):
+    def drawLists(self, path=None, iterations=0):
         plt.rcParams['figure.figsize'] = [12, 8]
         printLabels = False
-        maxDimension = max(self.mapImage.shape)
 
-        if maxDimension < 16: printLabels = True
-        rectangleDimension = 250000/maxDimension**2
+        if self.maxDimension < 16: printLabels = True
         precision = 2
         fontSmall = 6
         fontBig = 10
@@ -193,16 +227,29 @@ class AStar:
             orange_x.append(point.x)
             orange_y.append(point.y)
         
-        plt.scatter(x=orange_x, y=orange_y, c='orange', marker='s', s=rectangleDimension)
-        plt.scatter(x=yellow_x, y=yellow_y, c='yellow', marker='s', s=rectangleDimension)
+        plt.scatter(x=orange_x, y=orange_y, c='orange', marker='s', s=self.rectangleDimension)
+        plt.scatter(x=yellow_x, y=yellow_y, c='yellow', marker='s', s=self.rectangleDimension)
         plt.imshow(self.mapImage)
 
         if path is not None:
             self.createFolder(path)
             plt.savefig(f'{path}/{iterations}_Iteration_V2')
             plt.close()
-        else:
-            plt.show()
+
+
+    def drawPath(self):
+        x_list = []
+        y_list = []
+
+        self.drawLists()
+
+        for p in self.path:
+            x_list.append(p.x)
+            y_list.append(p.y)
+        
+        plt.scatter(x=x_list, y=y_list, c='red', marker='s', s=self.rectangleDimension)
+        plt.show()
+        
 
     def createFolder(self, path):
         if not os.path.exists(path):
